@@ -16,11 +16,12 @@ class BatchLoader
       Thread.current[NAMESPACE] = nil
     end
 
-    attr_reader :items_by_block, :loaded_values_by_block
+    attr_reader :items_by_block, :loaded_values_by_block, :mutex_by_block
 
     def initialize
       @items_by_block = Hash.new { |hash, key| hash[key] = Set.new }
       @loaded_values_by_block = Hash.new { |hash, key| hash[key] = {} }
+      @mutex_by_block = Hash.new { |hash, key| hash[key] = Mutex.new }
     end
   end
 end

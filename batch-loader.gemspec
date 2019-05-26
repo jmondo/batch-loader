@@ -24,8 +24,10 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "bundler", "~> 1.15"
   spec.add_development_dependency "rake", "~> 10.0"
   spec.add_development_dependency "rspec", "~> 3.0"
+  # TODO: it only works with my patched version of graphql
   spec.add_development_dependency "graphql", "~> 1.6"
   spec.add_development_dependency "pry-byebug", "~> 3.4"
   spec.add_development_dependency "benchmark-ips", "~> 2.7"
   spec.add_development_dependency "ruby-prof", "~> 0.16"
+  spec.add_development_dependency "concurrent-ruby", "~> 1.1.5"
 end

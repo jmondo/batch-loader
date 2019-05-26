@@ -4,13 +4,14 @@ require_relative "./executor"
 
 class BatchLoader
   class ExecutorProxy
-    attr_reader :default_value, :block, :global_executor
+    attr_reader :default_value, :block, :global_executor, :mutex
 
     def initialize(default_value, key, &block)
       @default_value = default_value
       @block = block
       @block_hash_key = [block.source_location, key]
       @global_executor = BatchLoader::Executor.ensure_current
+      @mutex = global_executor.mutex_by_block[@block_hash_key]
     end
 
     def add(item:)

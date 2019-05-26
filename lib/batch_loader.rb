@@ -8,7 +8,7 @@ require_relative "./batch_loader/middleware"
 require_relative "./batch_loader/graphql"
 
 class BatchLoader
-  IMPLEMENTED_INSTANCE_METHODS = %i[object_id __id__ __send__ singleton_method_added __sync respond_to? batch inspect].freeze
+  IMPLEMENTED_INSTANCE_METHODS = %i[object_id __id__ __send__ singleton_method_added __presync __sync respond_to? batch inspect].freeze
   REPLACABLE_INSTANCE_METHODS = %i[batch inspect].freeze
   LEFT_INSTANCE_METHODS = (IMPLEMENTED_INSTANCE_METHODS - REPLACABLE_INSTANCE_METHODS).freeze
 
@@ -45,10 +45,16 @@ class BatchLoader
     "#<BatchLoader:0x#{(object_id << 1)}>"
   end
 
+  def __presync
+    @promise = Concurrent::Promises.future do
+      __ensure_batched
+    end
+  end
+
   def __sync
     return @loaded_value if @synced
 
-    __ensure_batched
+    @promise && @promise.value || __ensure_batched
     @loaded_value = __executor_proxy.loaded_value(item: @item)
 
     if @cache
@@ -82,17 +88,19 @@ class BatchLoader
   end
 
   def __ensure_batched
-    return if __executor_proxy.value_loaded?(item: @item)
+    __executor_proxy.mutex.synchronize do
+      return if __executor_proxy.value_loaded?(item: @item)
 
-    items = __executor_proxy.list_items
-    loader = __loader
-    args = {default_value: @default_value, cache: @cache, key: @key}
-    @batch_block.call(items, loader, args)
-    items.each do |item|
-      next if __executor_proxy.value_loaded?(item: item)
-      loader.call(item, @default_value)
+      items = __executor_proxy.list_items
+      loader = __loader
+      args = {default_value: @default_value, cache: @cache, key: @key}
+      @batch_block.call(items, loader, args)
+      items.each do |item|
+        next if __executor_proxy.value_loaded?(item: item)
+        loader.call(item, @default_value)
+      end
+      __executor_proxy.delete(items: items)
     end
-    __executor_proxy.delete(items: items)
   end
 
   def __loader
